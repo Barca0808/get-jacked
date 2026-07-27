@@ -154,7 +154,8 @@ const KEY = "gj-mobile";
 let S = {};
 try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) {}
 const save = () => localStorage.setItem(KEY, JSON.stringify(S));
-const todayKey = () => new Date().toISOString().slice(0,10);
+const fmtDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const todayKey = () => fmtDate(new Date());
 
 let cur = null, idx = 0;
 const app = document.getElementById("app");
@@ -180,7 +181,7 @@ function home() {
 function dateOfWeekday(d) {
   const now = new Date(), x = new Date(now);
   x.setDate(now.getDate() + (d - now.getDay()));
-  return x.toISOString().slice(0,10);
+  return fmtDate(x);
 }
 
 function mealsView(d) {
