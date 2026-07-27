@@ -150,6 +150,20 @@ const MEALS = [
   {n:"Treat", s:"Used at breakfast (the toast)", p:"—"}]}
 ];
 
+const GOSPELS = [["Matthew",47,28],["Mark",48,16],["Luke",49,24],["John",50,21]];
+const READINGS = (() => {
+  const out = [];
+  GOSPELS.forEach(g => { for (let c = 1; c <= g[2]; c++) out.push({b:g[0], num:g[1], c}); });
+  const start = new Date(2026, 6, 27); // Jul 27 2026
+  out.forEach((r, i) => {
+    const d = new Date(start); d.setDate(start.getDate() + Math.round(i * 151 / (out.length - 1)));
+    r.dt = d;
+    r.url = "https://drbo.org/chapter/" + r.num + String(r.c).padStart(3, "0") + ".htm";
+  });
+  return out;
+})();
+const MONTHNAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
 const KEY = "gj-mobile";
 let S = {};
 try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) {}
@@ -174,8 +188,43 @@ function home() {
   const order = [1,2,3,4,5,6,0];
   const names = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   order.forEach(d => { html += `<button class="chip${d===dow?" today":""}" onclick="mealsView(${d})">${names[d]}</button>`; });
-  html += `</div></div>`;
+  html += `</div>`;
+  const gDone = READINGS.filter((_, i) => S["g|" + i]).length;
+  const tk = todayKey();
+  const nextIdx = READINGS.findIndex((r, i) => !S["g|" + i]);
+  const nextTxt = nextIdx === -1 ? "All 89 chapters read — finished." : `Next: ${READINGS[nextIdx].b} ${READINGS[nextIdx].c} (${fmtDate(READINGS[nextIdx].dt)})`;
+  html += `<h1 style="font-size:16pt;margin-top:26px;">The Gospels</h1><div class="sub">Douay-Rheims · all 89 chapters, one whole chapter per reading day, July 27 – December 25. ${gDone}/89 read. ${nextTxt}</div>
+    <button class="daybtn" onclick="gospelsView()"><span class="t">Open the reading plan</span><div class="d">Matthew → Mark → Luke → John · tap a chapter to read it, tap the box when done</div></button></div>`;
   app.innerHTML = html;
+}
+
+function gospelsView() {
+  cur = null;
+  const tk = todayKey();
+  let html = `<div class="screen"><div class="topbar"><button onclick="home()">‹ Back</button><div style="font-size:11pt;color:#999;">${READINGS.filter((_,i)=>S["g|"+i]).length}/89</div></div>
+    <h1>The Gospels — Reading Plan</h1><div class="sub">Douay-Rheims (drbo.org). One whole chapter per reading day; days without a listing are catch-up days. Finishes December 25.</div>`;
+  let lastMonth = -1;
+  READINGS.forEach((r, i) => {
+    if (r.dt.getMonth() !== lastMonth) {
+      lastMonth = r.dt.getMonth();
+      html += `<h1 style="font-size:14pt;margin-top:20px;">${MONTHNAMES[lastMonth]}</h1>`;
+    }
+    const k = "g|" + i, dk = fmtDate(r.dt);
+    const isToday = dk === tk;
+    html += `<div class="mrow${S[k]?" checked":""}"${isToday?' style="border:2px solid #6b5a2e;"':""}>
+      <span class="mbox" onclick="toggleG(${i})">${S[k]?"✓":""}</span>
+      <span><b>${r.b} ${r.c}</b>${isToday?'<span class="pill">TODAY</span>':""}<br><span style="color:#777;font-size:10.5pt;">${r.dt.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</span> · <a href="${r.url}" target="_blank" rel="noopener" style="color:#305880;">Read chapter →</a></span></div>`;
+  });
+  html += `</div>`;
+  app.innerHTML = html;
+  const t = document.querySelector('.mrow[style*="border"]');
+  if (t) t.scrollIntoView({block:"center"});
+}
+
+function toggleG(i) {
+  const k = "g|" + i;
+  S[k] = !S[k]; if (!S[k]) delete S[k]; save();
+  gospelsView();
 }
 
 function dateOfWeekday(d) {
