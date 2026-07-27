@@ -46,6 +46,14 @@
   #timer button { font-family: inherit; font-size: 13pt; padding: 12px 22px; border-radius: 12px; border: 1px solid #8a7a52; background: transparent; color: #fff; }
   #timer .go { background: #8a9a5b; border-color: #8a9a5b; }
   .donecard .exname { color: #8a9a5b; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip { font-family: inherit; font-size: 12.5pt; padding: 12px 16px; border-radius: 11px; border: 1px solid #c9bda2; background: #fff; }
+  .chip.today { border: 2px solid #6b5a2e; background: #f6f0e2; font-weight: bold; }
+  .mrow { display: flex; gap: 10px; align-items: flex-start; background: #fff; border: 1px solid #e3dac6; border-radius: 11px; padding: 12px; margin-top: 9px; }
+  .mrow.checked { opacity: 0.55; }
+  .mrow.checked b { text-decoration: line-through; }
+  .mbox { flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; border: 2px solid #b8a678; display: flex; align-items: center; justify-content: center; color: #fff; background: transparent; }
+  .mrow.checked .mbox { background: #8a9a5b; border-color: #8a9a5b; }
 </style>
 </head>
 <body>
@@ -90,6 +98,58 @@ const W = {
  ]}
 };
 
+const MEALS = [
+ { day:"Sunday", tag:"Rest + meal prep", items:[
+  {n:"Shake", s:"Whey + creatine", p:"~25 g"},
+  {n:"Breakfast", s:"Egg and cheese scramble", p:"~26 g"},
+  {n:"Lunch", s:"Leftovers from the week", p:"~35 g"},
+  {n:"Snack", s:"Peach + second shake or almonds", p:"~20 g"},
+  {n:"Dinner", s:"Roast chicken, potatoes, vegetables — cook double for the week ahead", p:"~45 g"},
+  {n:"Treat", s:"Cookies or chocolate — one serving", p:"—"}]},
+ { day:"Monday", tag:"Upper A day", items:[
+  {n:"Shake", s:"Whey + creatine + banana, around the workout", p:"~25 g"},
+  {n:"Breakfast", s:"3 eggs with smoked salmon on top", p:"~28 g"},
+  {n:"Lunch", s:"Grilled chicken, rice, broccoli", p:"~40 g"},
+  {n:"Snack", s:"Peach + handful of almonds", p:"~8 g"},
+  {n:"Dinner", s:"Baked salmon, roasted potatoes, asparagus", p:"~40 g"},
+  {n:"Treat", s:"2 squares dark chocolate", p:"—"}]},
+ { day:"Tuesday", tag:"Lower A day", items:[
+  {n:"Shake", s:"Whey + creatine + banana", p:"~25 g"},
+  {n:"Breakfast", s:"3-egg omelet with cheese", p:"~26 g"},
+  {n:"Lunch", s:"Tuna over spinach salad, apple on the side", p:"~35 g"},
+  {n:"Snack", s:"Berries + a second protein shake", p:"~25 g"},
+  {n:"Dinner", s:"Steak, rice, green beans", p:"~45 g"},
+  {n:"Treat", s:"1–2 cookies", p:"—"}]},
+ { day:"Wednesday", tag:"Walk + PT day", items:[
+  {n:"Shake", s:"Whey + creatine (protein stays high on off days)", p:"~25 g"},
+  {n:"Breakfast", s:"Scrambled eggs with smoked salmon", p:"~28 g"},
+  {n:"Lunch", s:"Leftover steak over kale caesar salad", p:"~40 g"},
+  {n:"Snack", s:"Plum + almonds", p:"~8 g"},
+  {n:"Dinner", s:"Chicken thighs, sweet potato, spinach salad", p:"~45 g"},
+  {n:"Treat", s:"A few squares of chocolate", p:"—"}]},
+ { day:"Thursday", tag:"Upper B day", items:[
+  {n:"Shake", s:"Whey + creatine + banana", p:"~25 g"},
+  {n:"Breakfast", s:"3 eggs scrambled with cheese", p:"~26 g"},
+  {n:"Lunch", s:"Chicken-and-rice bowl (Monday’s leftover chicken)", p:"~40 g"},
+  {n:"Snack", s:"Apple + cheese", p:"~10 g"},
+  {n:"Dinner", s:"White fish, potatoes, zucchini", p:"~40 g"},
+  {n:"Treat", s:"1–2 cookies", p:"—"}]},
+ { day:"Friday", tag:"Lower B day · weigh-in before coffee", items:[
+  {n:"Shake", s:"Whey + creatine + banana", p:"~25 g"},
+  {n:"Breakfast", s:"Smoked salmon + eggs", p:"~28 g"},
+  {n:"Lunch", s:"Turkey and cheese roll-ups, a peach", p:"~35 g"},
+  {n:"Snack", s:"Berries + almonds", p:"~6 g"},
+  {n:"Dinner", s:"Burger night — the bun is today’s treat, kale caesar salad", p:"~45 g"},
+  {n:"Treat", s:"Used at dinner (the bun) — if skipped, chocolate", p:"—"}]},
+ { day:"Saturday", tag:"Hike day", items:[
+  {n:"Breakfast", s:"3 eggs + a slice of toast before the hike (toast = today’s treat)", p:"~22 g"},
+  {n:"Trail snack", s:"Banana + almonds", p:"~5 g"},
+  {n:"Shake", s:"Whey + creatine after the hike", p:"~25 g"},
+  {n:"Lunch", s:"Deli turkey + cheese + fruit", p:"~35 g"},
+  {n:"Dinner", s:"Salmon, rice, vegetables", p:"~40 g"},
+  {n:"Treat", s:"Used at breakfast (the toast)", p:"—"}]}
+];
+
 const KEY = "gj-mobile";
 let S = {};
 try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) {}
@@ -108,8 +168,39 @@ function home() {
     const today = w.days.includes(dow);
     html += `<button class="daybtn${today?" today":""}" onclick="start('${k}')"><span class="t">${w.name}</span>${today?'<span class="pill">TODAY</span>':""}<div class="d">${w.ex.length-1} exercises + warm-up · ~40 min</div></button>`;
   }
-  html += `<div class="sub" style="margin-top:16px;">Wed: walk + PT exercises · Sat: hike · Sun: rest + meal prep. Knee rule: pain-free range only — your PT’s guidance wins.</div></div>`;
+  html += `<div class="sub" style="margin-top:16px;">Wed: walk + PT exercises · Sat: hike · Sun: rest + meal prep. Knee rule: pain-free range only — your PT’s guidance wins.</div>`;
+  html += `<h1 style="font-size:16pt;margin-top:26px;">This Week’s Food</h1><div class="sub">~2,300 cal · 150–165 g protein daily (estimates — Friday weigh-ins are the referee). Tap a day, check off meals as you eat.</div><div class="chips">`;
+  const order = [1,2,3,4,5,6,0];
+  const names = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  order.forEach(d => { html += `<button class="chip${d===dow?" today":""}" onclick="mealsView(${d})">${names[d]}</button>`; });
+  html += `</div></div>`;
   app.innerHTML = html;
+}
+
+function dateOfWeekday(d) {
+  const now = new Date(), x = new Date(now);
+  x.setDate(now.getDate() + (d - now.getDay()));
+  return x.toISOString().slice(0,10);
+}
+
+function mealsView(d) {
+  cur = null;
+  const m = MEALS[d], dk = dateOfWeekday(d);
+  let html = `<div class="screen"><div class="topbar"><button onclick="home()">‹ Back</button><div style="font-size:11pt;color:#999;">${dk}</div></div>
+    <h1>${m.day}</h1><div class="sub">${m.tag} · ~2,300 cal · 150–165 g protein</div><div style="margin-top:10px;">`;
+  m.items.forEach((it, i) => {
+    const k = `${dk}|m|${i}`;
+    html += `<div class="mrow${S[k]?" checked":""}" onclick="toggleMeal('${k}')">
+      <span class="mbox">${S[k]?"✓":""}</span>
+      <span><b>${it.n}</b> — ${it.s} <span style="color:#8a7340;font-size:10.5pt;">${it.p}</span></span></div>`;
+  });
+  html += `</div><div class="sub" style="margin-top:14px;">One treat serving a day — protein first. No cottage cheese, ever. Espressos before 2 p.m.</div></div>`;
+  app.innerHTML = html;
+}
+
+function toggleMeal(k) {
+  S[k] = !S[k]; if (!S[k]) delete S[k]; save();
+  mealsView(new Date(k.slice(0,10) + "T12:00:00").getDay());
 }
 
 function start(k) { cur = k; idx = 0; render(); }
