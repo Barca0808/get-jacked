@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Get Jacked — Workout Mode</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font-family: Garamond, "EB Garamond", Georgia, serif; font-size: 13pt; margin: 0; background: #faf8f4; color: #1a1a1a; overscroll-behavior: none; }
+  .screen { min-height: 100vh; display: flex; flex-direction: column; padding: max(env(safe-area-inset-top), 12px) 18px 24px; }
+  h1 { font-size: 19pt; margin: 10px 0 2px; }
+  .sub { color: #777; font-size: 11pt; }
+  .daybtn { display: block; width: 100%; text-align: left; background: #fff; border: 1px solid #d8cdb6; border-radius: 14px; padding: 16px; margin-top: 12px; font-family: inherit; font-size: 13pt; cursor: pointer; }
+  .daybtn .t { font-weight: bold; font-size: 14pt; }
+  .daybtn .d { color: #777; font-size: 11pt; }
+  .daybtn.today { border: 2px solid #6b5a2e; background: #f6f0e2; }
+  .pill { display: inline-block; background: #6b5a2e; color: #fff; border-radius: 10px; font-size: 9.5pt; padding: 2px 9px; margin-left: 6px; vertical-align: middle; }
+  /* workout mode */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .topbar button { background: none; border: none; font-family: inherit; font-size: 12pt; color: #6b5a2e; padding: 8px 4px; }
+  .dots { display: flex; gap: 5px; justify-content: center; flex: 1; flex-wrap: wrap; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #ddd3bd; }
+  .dot.on { background: #6b5a2e; }
+  .dot.done { background: #8a9a5b; }
+  .card { flex: 1; display: flex; flex-direction: column; justify-content: center; text-align: center; padding: 8px 2px 0; }
+  .exname { font-size: 21pt; font-weight: bold; line-height: 1.15; }
+  .scheme { font-size: 15pt; color: #6b5a2e; margin-top: 6px; }
+  .cue { color: #555; font-size: 12pt; margin: 14px auto 0; max-width: 34em; line-height: 1.45; }
+  .vid { display: inline-block; margin-top: 12px; color: #305880; font-size: 11.5pt; }
+  .sets { display: flex; gap: 14px; justify-content: center; margin-top: 22px; }
+  .setb { width: 58px; height: 58px; border-radius: 50%; border: 2px solid #b8a678; background: #fff; font-family: inherit; font-size: 13pt; color: #6b5a2e; }
+  .setb.done { background: #8a9a5b; border-color: #8a9a5b; color: #fff; }
+  .wtrow { margin-top: 18px; }
+  .wtrow input { width: 90px; font-family: inherit; font-size: 13pt; padding: 8px; border: 1px solid #ccc; border-radius: 8px; text-align: center; }
+  .nav { display: flex; gap: 10px; margin-top: 18px; }
+  .nav button { flex: 1; font-family: inherit; font-size: 13.5pt; padding: 15px; border-radius: 12px; border: 1px solid #c9bda2; background: #fff; }
+  .nav .next { background: #6b5a2e; color: #fff; border-color: #6b5a2e; }
+  .hint { text-align: center; color: #999; font-size: 10pt; margin-top: 10px; }
+  /* timer overlay */
+  #timer { position: fixed; inset: 0; background: rgba(28,24,15,0.93); color: #fff; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 50; }
+  #timer.show { display: flex; }
+  #tdigits { font-size: 64pt; font-variant-numeric: tabular-nums; }
+  #timer .lbl { font-size: 13pt; color: #cbbf9e; }
+  #timer .row { display: flex; gap: 14px; margin-top: 26px; }
+  #timer button { font-family: inherit; font-size: 13pt; padding: 12px 22px; border-radius: 12px; border: 1px solid #8a7a52; background: transparent; color: #fff; }
+  #timer .go { background: #8a9a5b; border-color: #8a9a5b; }
+  .donecard .exname { color: #8a9a5b; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="timer"><div class="lbl">REST</div><div id="tdigits">1:30</div><div class="row"><button onclick="addTime(15)">+15 s</button><button class="go" onclick="hideTimer()">Done — next set</button></div></div>
+
+<script>
+const W = {
+ upperA: { name: "Upper A — Press & Row", days: [1], ex: [
+  {n:"Warm-up", s:"5 minutes", cue:"2 PT hip exercises (1 set each) → 10 glute bridges → 10 arm circles each way → 1 light set of bench press with ~15 lb bells.", sets:1},
+  {n:"Dumbbell Bench Press", s:"3 × 8–10", w:"start ~30 lb/hand", cue:"Feet planted, lower to chest with elbows ~45° from sides, press up and slightly in. Leave 2–3 reps in the tank.", v:"https://www.youtube.com/watch?v=Y_7aHqXeCfQ", vc:"ScottHermanFitness", sets:3, wt:1},
+  {n:"One-Arm Dumbbell Row", s:"3 × 10 per side", w:"~40 lb", cue:"Hand and knee on bench, flat back. Pull to your hip, squeeze the shoulder blade.", v:"https://www.youtube.com/watch?v=nMFCMNKnLgQ", vc:"Buff Dudes", sets:3, wt:1},
+  {n:"Seated Shoulder Press", s:"3 × 8–10", w:"~20 lb/hand", cue:"Bench upright, ribs down, press overhead without arching the lower back.", v:"https://www.youtube.com/watch?v=1jYq9QQEWqE", vc:"Buff Dudes", sets:3, wt:1},
+  {n:"Dumbbell Curl", s:"2 × 10–12", w:"~20 lb", cue:"Elbows pinned to sides. No swinging — if you rock, go lighter.", v:"https://www.youtube.com/watch?v=in7PaeYlhrM", vc:"Mind Pump TV", sets:2, wt:1},
+  {n:"Lying Triceps Extension", s:"2 × 10–12", w:"~15 lb", cue:"Bells over your face, bend only at the elbows, lower toward your ears.", v:"https://www.youtube.com/watch?v=ir5PsbniVSc", vc:"ScottHermanFitness", sets:2, wt:1},
+  {n:"Push-ups", s:"1 × max", cue:"One straight line, chest to an inch off the floor. Stop 1 rep before form breaks — log the number in the weight box.", v:"https://www.youtube.com/watch?v=Zi6c09DRGxk", vc:"ATHLEAN-X", sets:1, wt:1}
+ ]},
+ lowerA: { name: "Lower A — Hinge & Glutes", days: [2], ex: [
+  {n:"Warm-up", s:"5 minutes", cue:"2 PT hip exercises → 10 glute bridges → 10 arm circles each way → 1 light set of RDL with ~15–20 lb bells. Extra care on the hip work today.", sets:1},
+  {n:"Romanian Deadlift", s:"3 × 8–10", w:"~35 lb/hand", cue:"Soft knees, hips straight back, bells slide down thighs. Stop at hamstring stretch, squeeze glutes to stand.", v:"https://www.youtube.com/watch?v=BF-vvMGP8Y0", vc:"Buff Dudes", sets:3, wt:1},
+  {n:"Goblet Squat to Bench", s:"3 × 10", w:"~30 lb", cue:"Bell at chest, sit back to touch the bench, stand. Only pain-free depth — mild stiffness OK, sharp pain means shallower.", v:"https://www.youtube.com/watch?v=MeIiIdhvXT4", vc:"ScottHermanFitness", sets:3, wt:1},
+  {n:"Hip Thrust", s:"3 × 10–12", w:"~40 lb on hips", cue:"Upper back on bench, drive through heels to a flat tabletop, hard glute squeeze at top.", v:"https://www.youtube.com/watch?v=29OfN4ztW_g", vc:"J2FIT", sets:3, wt:1},
+  {n:"Side-Lying Hip Abduction", s:"2 × 15 per side", cue:"From your PT list. Top leg straight, lift slowly without rolling back. This one guards the knee.", v:"https://www.youtube.com/watch?v=9dJVwNzbH7s", vc:"Elite Performance Institute", sets:2},
+  {n:"Standing Calf Raise", s:"3 × 15", w:"~30 lb", cue:"All the way up on your toes, pause a beat, lower slow.", v:"https://www.youtube.com/watch?v=HvvqTpTongY", vc:"Live Lean TV", sets:3, wt:1}
+ ]},
+ upperB: { name: "Upper B — Shoulders & Arms", days: [4], ex: [
+  {n:"Warm-up", s:"5 minutes", cue:"2 PT hip exercises → 10 glute bridges → 10 arm circles each way → 1 light set of incline press with ~12–15 lb bells.", sets:1},
+  {n:"Incline Dumbbell Press", s:"3 × 8–10", w:"~25 lb/hand", cue:"Bench 30–45°. Press up and slightly back over the upper chest.", v:"https://www.youtube.com/watch?v=IP4oeKh1Sd4", vc:"Max Euceda", sets:3, wt:1},
+  {n:"Chest-Supported Row", s:"3 × 10", w:"~30 lb/hand", cue:"Chest down on the incline bench, row both bells to your ribs, squeeze the blades.", v:"https://www.youtube.com/watch?v=_b6ch2nIchk", vc:"Fit Father Project", sets:3, wt:1},
+  {n:"Lateral Raise", s:"3 × 12–15", w:"~10 lb", cue:"Slight elbow bend, raise out to shoulder height like pouring water. Light and strict.", v:"https://www.youtube.com/watch?v=-hyAJdSFzT4", vc:"Buff Dudes", sets:3, wt:1},
+  {n:"Hammer Curl", s:"2 × 10–12", w:"~20 lb", cue:"Palms facing each other the whole rep. No swing.", v:"https://www.youtube.com/watch?v=BRVDS6HVR9Q", vc:"Buff Dudes", sets:2, wt:1},
+  {n:"Overhead Triceps Extension", s:"2 × 10–12", w:"~25 lb", cue:"Both hands cup one bell overhead, lower behind your head, elbows only.", v:"https://www.youtube.com/watch?v=v1qDINLCb8Q", vc:"Colossus Fitness", sets:2, wt:1},
+  {n:"Rear-Delt Fly", s:"2 × 12–15", w:"~10 lb", cue:"Hinge forward, flat back, spread the bells wide like wings. Slow.", v:"https://www.youtube.com/watch?v=buuYPLVXsJg", vc:"Colossus Fitness", sets:2, wt:1}
+ ]},
+ lowerB: { name: "Lower B — Single-Leg & Carries", days: [5], ex: [
+  {n:"Warm-up", s:"5 minutes", cue:"2 PT hip exercises → 10 glute bridges → 10 arm circles each way → 1 light set of deadlift with ~20 lb bells. Friday = weigh-in before coffee.", sets:1},
+  {n:"Dumbbell Deadlift", s:"3 × 8", w:"~40 lb/hand", cue:"Bells at sides, flat back hinge, drive the floor away to stand. Pain-free depth only.", v:"https://www.youtube.com/watch?v=Ipi8_vz8_z0", vc:"Fit Father Project", sets:3, wt:1},
+  {n:"Step-Up (or Reverse Lunge)", s:"3 × 8 per side", w:"bodyweight → 15 lb", cue:"Low step, whole foot on, drive through the top heel without pushing off the floor leg. Shallow, pain-free range.", v:"https://www.youtube.com/watch?v=tqECKZxlCKE", vc:"overtimeathletes", sets:3, wt:1},
+  {n:"Single-Leg RDL", s:"2 × 8 per side", w:"~20 lb", cue:"Bell in one hand, hinge on the opposite leg, back leg trails for balance. Wobbling is the point.", v:"https://www.youtube.com/watch?v=Zfr6wizR8rs", vc:"Squat University", sets:2, wt:1},
+  {n:"Suitcase Carry", s:"3 × 40 steps per side", w:"~50 lb", cue:"Heavy bell in one hand, walk tall, don't lean. Your core fights the tilt.", v:"https://www.youtube.com/watch?v=y-hn_Ha1-RE", vc:"Dr. Carl Baird", sets:3, wt:1},
+  {n:"Side Plank", s:"2 × 30 sec per side", cue:"Elbow under shoulder, straight line, hips high.", v:"https://www.youtube.com/watch?v=rCxF2nG9vQ0", vc:"Get Exercise Confident", sets:2}
+ ]}
+};
+
+const KEY = "gj-mobile";
+let S = {};
+try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) {}
+const save = () => localStorage.setItem(KEY, JSON.stringify(S));
+const todayKey = () => new Date().toISOString().slice(0,10);
+
+let cur = null, idx = 0;
+const app = document.getElementById("app");
+
+function home() {
+  cur = null;
+  const dow = new Date().getDay();
+  let html = `<div class="screen"><h1>Get Jacked</h1><div class="sub">Pick today’s session. Weights are starting suggestions — end each set with 2–3 reps left, add 5 lb when you hit the top of the range on all sets.</div>`;
+  for (const k in W) {
+    const w = W[k];
+    const today = w.days.includes(dow);
+    html += `<button class="daybtn${today?" today":""}" onclick="start('${k}')"><span class="t">${w.name}</span>${today?'<span class="pill">TODAY</span>':""}<div class="d">${w.ex.length-1} exercises + warm-up · ~40 min</div></button>`;
+  }
+  html += `<div class="sub" style="margin-top:16px;">Wed: walk + PT exercises · Sat: hike · Sun: rest + meal prep. Knee rule: pain-free range only — your PT’s guidance wins.</div></div>`;
+  app.innerHTML = html;
+}
+
+function start(k) { cur = k; idx = 0; render(); }
+
+function render() {
+  const w = W[cur], n = w.ex.length;
+  if (idx >= n) return doneScreen();
+  const ex = w.ex[idx];
+  const dk = todayKey();
+  const setKey = i => `${dk}|${cur}|${idx}|${i}`;
+  const wtKey = `wt|${cur}|${idx}`;
+  let dots = w.ex.map((e,i) => {
+    const allDone = Array.from({length:e.sets}, (_,j)=>S[`${dk}|${cur}|${i}|${j}`]).every(Boolean);
+    return `<span class="dot${i===idx?" on":allDone?" done":""}"></span>`;
+  }).join("");
+  let setBtns = Array.from({length: ex.sets}, (_,i) =>
+    `<button class="setb${S[setKey(i)]?" done":""}" onclick="tapSet(${i})">${ex.sets===1?"✓":"Set "+(i+1)}</button>`).join("");
+  app.innerHTML = `<div class="screen">
+    <div class="topbar"><button onclick="home()">‹ Exit</button><div class="dots">${dots}</div><div style="width:44px;font-size:10.5pt;color:#999;text-align:right;">${idx+1}/${n}</div></div>
+    <div class="card" id="card">
+      <div class="exname">${ex.n}</div>
+      <div class="scheme">${ex.s}${ex.w?` · ${ex.w}`:""}</div>
+      <div class="cue">${ex.cue}</div>
+      ${ex.v?`<a class="vid" href="${ex.v}" target="_blank" rel="noopener">▶ Form video (${ex.vc})</a>`:""}
+      <div class="sets">${setBtns}</div>
+      ${ex.wt?`<div class="wtrow"><input inputmode="decimal" placeholder="lb used" value="${S[wtKey]||""}" onchange="S['${wtKey}']=this.value;save();"></div>`:""}
+    </div>
+    <div class="nav"><button onclick="prev()">‹ Back</button><button class="next" onclick="next()">Next ›</button></div>
+    <div class="hint">swipe left / right to move between exercises</div>
+  </div>`;
+  attachSwipe();
+}
+
+function doneScreen() {
+  app.innerHTML = `<div class="screen"><div class="card donecard">
+    <div class="exname">Workout complete.</div>
+    <div class="cue">That’s one more brick in the December 25 wall. Shake + creatine now, protein at every meal today.</div>
+    </div><div class="nav"><button class="next" onclick="home()">Done</button></div></div>`;
+  attachSwipe();
+}
+
+function tapSet(i) {
+  const w = W[cur], ex = w.ex[idx];
+  const k = `${todayKey()}|${cur}|${idx}|${i}`;
+  S[k] = !S[k]; save();
+  render();
+  if (S[k]) {
+    const lastSet = Array.from({length: ex.sets}, (_,j)=>S[`${todayKey()}|${cur}|${idx}|${j}`]).every(Boolean);
+    if (lastSet && ex.sets > 0 && idx < w.ex.length) {
+      if (idx === w.ex.length - 1) { idx++; render(); return; }
+      showTimer(90, () => { idx++; render(); });
+    } else if (ex.sets > 1) {
+      showTimer(90);
+    }
+  }
+}
+
+function next() { const n = W[cur].ex.length; if (idx <= n - 1) { idx++; render(); } }
+function prev() { if (idx > 0) { idx--; render(); } else home(); }
+
+/* swipe */
+let sx = null, sy = null;
+function attachSwipe() {
+  const el = app.firstElementChild;
+  el.addEventListener("touchstart", e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive:true});
+  el.addEventListener("touchend", e => {
+    if (sx === null || cur === null) return;
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { dx < 0 ? next() : prev(); }
+    sx = sy = null;
+  }, {passive:true});
+}
+
+/* timer */
+let tLeft = 0, tInt = null, tCb = null;
+function showTimer(sec, cb) {
+  tLeft = sec; tCb = cb || null;
+  document.getElementById("timer").classList.add("show");
+  tick();
+  clearInterval(tInt);
+  tInt = setInterval(() => { tLeft--; if (tLeft <= 0) { beep(); hideTimer(); } else { tick(); } }, 1000);
+}
+function tick() {
+  const m = Math.floor(tLeft/60), s = tLeft%60;
+  document.getElementById("tdigits").textContent = `${m}:${String(s).padStart(2,"0")}`;
+}
+function addTime(s) { tLeft += s; tick(); }
+function hideTimer() {
+  clearInterval(tInt);
+  document.getElementById("timer").classList.remove("show");
+  if (tCb) { const f = tCb; tCb = null; f(); }
+}
+function beep() {
+  if (navigator.vibrate) navigator.vibrate([200,100,200]);
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.value = 0.3;
+    o.start(); o.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
+home();
+</script>
+</body>
+</html>
